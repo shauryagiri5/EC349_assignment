@@ -16,12 +16,15 @@ rm(list=ls())
 load("~/yelp_review_small.Rda")
 load("C:/Users/shaur/Desktop/Year 3/Data Science/Project files/yelp_user_small.Rda")
 
+# Merge data
 merged_data <- merge(review_data_small, user_data_small, by = "user_id", all.x = TRUE)
 
+#Identify variables of note
 features <- c("useful.x", "funny.x", "cool.x", "useful.y", "funny.y", "cool.y", "review_count", "text", "average_stars", "fans")
 target <- "stars"  # Define your target variable
 model_data <- merged_data[, c(features, target)]
 
+#Process text to create numerical variables- sentiment_count and review_count
 bing_lexicon <- get_sentiments("bing")
 
 positive_words <- bing_lexicon$word[bing_lexicon$sentiment == "positive"]
@@ -43,8 +46,10 @@ count_words <- function(text) {
   return(length(words))
 }
 
+#remove cases with missing dtat
 model_data_no_missing <- model_data[complete.cases(model_data), ]
 
+#take sample
 set.seed(1)
 sampled_data <- model_data_no_missing[sample(nrow(model_data_no_missing), 100000), ]
 
@@ -57,6 +62,7 @@ sampled_data$sentiment_score <- sentiment_analysis_results[, "sentiment_score"]
 
 sampled_data <- sampled_data[, !names(sampled_data) %in% c("text")]
 
+#split data
 set.seed(1)  
 splitIndex <- caret::createDataPartition(sampled_data[, "stars"], p = 0.8, list = FALSE)
 train_data <- sampled_data[splitIndex, ]
@@ -65,12 +71,14 @@ test_data <- sampled_data[-splitIndex, ]
 train_data <- as.data.frame(train_data)
 test_data <- as.data.frame(test_data)
 
+#Set up paramter tuning
 tuning_grid <- expand.grid(
   cp = seq(0.001, 0.1, by = 0.001)
 )
 
 ctrl <- caret::trainControl(method = "cv", number = 10)  # 10-fold cross-validation
 
+#Create regression tree
 tuned_rpart_model <- caret::train(
   as.formula(paste(target, "~ .")),
   data = train_data,
